@@ -6,7 +6,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "my-terraform-state-bucket-unique-123" # Змініть на свій бакет
+    bucket  = "terraform-state-maksym-fitness" # Змініть на свій бакет
     prefix  = "terraform/state"
   }
 }
