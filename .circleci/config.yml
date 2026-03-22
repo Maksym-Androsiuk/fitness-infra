@@ -20,7 +20,7 @@ jobs:
           command: |
             cd terraform
             export GOOGLE_APPLICATION_CREDENTIALS="/tmp/gcloud-key.json"
-            terraform init -backend-config="bucket=terraform-state-maksym-fitness"
+            terraform init -reconfigure -backend-config="bucket=terraform-state-maksym-fitness"
             terraform apply -auto-approve \
               -var="project_id=$GOOGLE_PROJECT_ID" \
               -var="region=$GOOGLE_COMPUTE_ZONE"
