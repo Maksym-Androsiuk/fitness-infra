@@ -19,6 +19,8 @@ jobs:
           name: Terraform Init & Apply
           command: |
             cd terraform
+            echo "Project ID is: $GOOGLE_PROJECT_ID"
+            echo "Zone is: $GOOGLE_COMPUTE_ZONE"
             export GOOGLE_APPLICATION_CREDENTIALS="/tmp/gcloud-key.json"
             terraform init -reconfigure -backend-config="bucket=terraform-state-maksym-fitness"
             terraform apply -auto-approve \
