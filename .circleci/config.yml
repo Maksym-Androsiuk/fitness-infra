@@ -14,7 +14,7 @@ jobs:
       - checkout
       - run:
           name: Decode Service Account
-          command: echo "$GCLOUD_SERVICE_KEY" | base64 --decode > /tmp/gcloud-key.json
+          command: echo "$GCLOUD_SERVICE_KEY" | tr -d '\r\n ' | base64 --decode > /tmp/gcloud-key.json
       - run:
           name: Terraform Init & Apply
           command: |
