@@ -16,6 +16,21 @@ provider "google" {
   region  = var.region
 }
 
+# Примусове увімкнення Compute Engine API
+resource "google_project_service" "compute_api" {
+  project            = var.project_id
+  service            = "compute.googleapis.com"
+  disable_on_destroy = false
+}
+
+data "google_compute_image" "ubuntu" {
+  family  = "ubuntu-2204-lts"
+  project = "ubuntu-os-cloud"
+
+  # Цей рядок гарантує, що запит до образу відбудеться ТІЛЬКИ після активації API
+  depends_on = [google_project_service.compute_api] 
+}
+
 # 1. Artifact Registry (заміна Container Registry)
 resource "google_artifact_registry_repository" "fitness_repo" {
   location      = var.region

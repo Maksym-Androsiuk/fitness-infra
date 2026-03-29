@@ -16,6 +16,16 @@ jobs:
           name: Decode Service Account
           command: echo "$GCLOUD_SERVICE_KEY" | tr -d '\r\n ' | base64 --decode > /tmp/gcloud-key.json
       - run:
+          name: Force API Synchronization
+          command: |
+            # Аутентифікація в gcloud за допомогою ключа, який ми розшифрували раніше
+            gcloud auth activate-service-account --key-file=/tmp/gcloud-key.json
+            gcloud config set project $GOOGLE_PROJECT_ID
+            
+            # Примусове увімкнення API через командний рядок
+            echo "Enabling Compute Engine API..."
+            gcloud services enable compute.googleapis.com
+      - run:
           name: Terraform Init & Apply
           command: |
             cd terraform
