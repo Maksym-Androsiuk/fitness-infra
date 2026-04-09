@@ -26,7 +26,19 @@ jobs:
             terraform apply -auto-approve \
               -var="project_id=$GOOGLE_PROJECT_ID" \
               -var="region=$GOOGLE_COMPUTE_ZONE"
-
+      - run:
+          name: Identity & Config Validation
+          command: |
+            # Перевірка, який саме SA зараз активний в середовищі CI
+            gcloud auth list || echo "gcloud not installed"
+            
+            # Перевірка парсингу змінної (без виводу самого секрету!)
+            echo "Key path: $GOOGLE_APPLICATION_CREDENTIALS"
+            ls -la /tmp/gcloud-key.json
+            
+            # Перевірка, як Terraform бачить провайдера
+            terraform providers
+        
   # 2. Білд та Тестування
   build-and-test:
     docker:
