@@ -14,18 +14,7 @@ jobs:
       - checkout
       - run:
           name: Decode Service Account
-          command: echo "$GCLOUD_SERVICE_KEY" | tr -d '\r\n ' | base64 --d > /tmp/gcloud-key.json
-      - run:
-          name: Terraform Init & Apply
-          command: |
-            cd terraform
-            echo "Project ID is: $GOOGLE_PROJECT_ID"
-            echo "Zone is: $GOOGLE_COMPUTE_ZONE"
-            export GOOGLE_APPLICATION_CREDENTIALS="/tmp/gcloud-key.json"
-            terraform init -reconfigure -backend-config="bucket=terraform-state-maksym-fitness"
-            terraform apply -auto-approve \
-              -var="project_id=$GOOGLE_PROJECT_ID" \
-              -var="region=$GOOGLE_COMPUTE_ZONE"
+          command: echo "$GCLOUD_SERVICE_KEY" | tr -d '\r\n ' | base64 -d > /tmp/gcloud-key.json
       - run:
           name: Identity & Config Validation
           command: |
@@ -38,6 +27,18 @@ jobs:
             
             # Перевірка, як Terraform бачить провайдера
             terraform providers
+      - run:
+          name: Terraform Init & Apply
+          command: |
+            cd terraform
+            echo "Project ID is: $GOOGLE_PROJECT_ID"
+            echo "Zone is: $GOOGLE_COMPUTE_ZONE"
+            export GOOGLE_APPLICATION_CREDENTIALS="/tmp/gcloud-key.json"
+            terraform init -reconfigure -backend-config="bucket=terraform-state-maksym-fitness"
+            terraform apply -auto-approve \
+              -var="project_id=$GOOGLE_PROJECT_ID" \
+              -var="region=$GOOGLE_COMPUTE_ZONE"
+
         
   # 2. Білд та Тестування
   build-and-test:
