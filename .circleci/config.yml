@@ -25,7 +25,7 @@ jobs:
             terraform init -reconfigure -backend-config="bucket=terraform-state-maksym-fitness"
             terraform apply -auto-approve \
               -var="project_id=$GOOGLE_PROJECT_ID" \
-              -var="region=$GOOGLE_COMPUTE_ZONE"
+              -var="region=$GOOGLE_COMPUTE_REGION"
         
   # 2. Білд та Тестування
   build-and-test:
