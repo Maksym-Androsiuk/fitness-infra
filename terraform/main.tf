@@ -1,13 +1,13 @@
 terraform {
+  backend "gcs" {
+    bucket = "terraform-state-maksym-fitness"
+    prefix = "terraform/state"
+  }
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 4.0"
+      version = "~> 5.0"
     }
-  }
-  backend "gcs" {
-    bucket  = "terraform-state-maksym-fitness" # Змініть на свій бакет
-    prefix  = "terraform/state"
   }
 }
 
@@ -16,66 +16,84 @@ provider "google" {
   region  = var.region
 }
 
-# Примусове увімкнення Compute Engine API
 resource "google_project_service" "compute_api" {
-  project            = var.project_id
   service            = "compute.googleapis.com"
   disable_on_destroy = false
 }
 
-data "google_compute_image" "ubuntu" {
-  family  = "ubuntu-2204-lts"
-  project = "ubuntu-os-cloud"
-
-  # Цей рядок гарантує, що запит до образу відбудеться ТІЛЬКИ після активації API
-  depends_on = [google_project_service.compute_api] 
-}
-
-# 1. Artifact Registry (заміна Container Registry)
-resource "google_artifact_registry_repository" "fitness_repo" {
-  location      = var.region
-  repository_id = "fitness-app-repo"
-  description   = "Docker repository for Fitness App"
-  format        = "DOCKER"
-}
-
-# 2. VPC Network
-resource "google_compute_network" "vpc" {
+resource "google_compute_network" "vpc_network" {
   name                    = "fitness-vpc"
   auto_create_subnetworks = false
+  depends_on              = [google_project_service.compute_api]
 }
 
 resource "google_compute_subnetwork" "subnet" {
   name          = "fitness-subnet"
+  ip_cidr_range = "10.0.0.0/16"
+  network       = google_compute_network.vpc_network.id
   region        = var.region
-  network       = google_compute_network.vpc.name
-  ip_cidr_range = "10.10.0.0/24"
 }
 
-# 3. GKE Cluster
+resource "google_artifact_registry_repository" "fitness_repo" {
+  location      = var.region
+  repository_id = "fitness-repo"
+  description   = "Docker repository for Fitness App"
+  format        = "DOCKER"
+}
+
+resource "google_service_account" "gke_sa" {
+  account_id   = "gke-fitness-sa"
+  display_name = "GKE Service Account"
+}
+
+resource "google_project_iam_member" "gke_sa_roles" {
+  for_each = toset([
+    "roles/artifactregistry.reader",
+    "roles/logging.logWriter",
+    "roles/monitoring.metricWriter"
+  ])
+  project = var.project_id
+  role    = each.key
+  member  = "serviceAccount:${google_service_account.gke_sa.email}"
+}
+
+# ==========================================
+# ОНОВЛЕНИЙ БЛОК: Зональний GKE Кластер
+# ==========================================
 resource "google_container_cluster" "primary" {
   name     = "fitness-gke-cluster"
-  location = var.region
   
-  # Використовуємо окремий node pool для кращого керування
+  # Використовуємо конкретну зону для пришвидшення деплою та економії
+  location = "europe-west1-a" 
+
+  # Збережено твої налаштування мережі
+  network    = google_compute_network.vpc_network.id
+  subnetwork = google_compute_subnetwork.subnet.id
+
   remove_default_node_pool = true
   initial_node_count       = 1
-  
-  network    = google_compute_network.vpc.name
-  subnetwork = google_compute_subnetwork.subnet.name
 }
 
+# ==========================================
+# ОНОВЛЕНИЙ БЛОК: Пул робочих нод
+# ==========================================
 resource "google_container_node_pool" "primary_nodes" {
   name       = "fitness-node-pool"
-  location   = var.region
-  cluster    = google_container_cluster.primary.name
-  node_count = 2
+  
+  # Локація строго збігається з локацією кластера
+  location   = "europe-west1-a" 
+  
+  # Використовуємо .id замість .name для точного API-мапінгу
+  cluster    = google_container_cluster.primary.id 
+
+  node_count = 1
 
   node_config {
-    preemptible  = true # Дешевше для навчальних цілей
+    preemptible  = true
     machine_type = "e2-medium"
-    
-    # Доступи для pulling images з Artifact Registry
+    disk_size_gb = 20
+
+    service_account = google_service_account.gke_sa.email
     oauth_scopes = [
       "https://www.googleapis.com/auth/cloud-platform"
     ]
